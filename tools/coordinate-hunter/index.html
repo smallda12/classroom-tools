@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>座標獵人 - 直角座標練習遊戲</title>
+    <meta name="description" content="直角座標練習遊戲「座標獵人」：在 11x11 平面格點中尋找 10 個隱藏座標！">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Noto+Sans+TC:wght@400;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-board: #161a1d;
+            --board-border: #2c3338;
+            --text-chalk: #f0f4f8;
+            --text-muted: #8a99a6;
+            --orange-accent: #ff7700;
+            --orange-glow: rgba(255, 119, 0, 0.4);
+            --green-hit: #00e676;
+            --red-miss: #ff5252;
+            --grid-line: rgba(255, 255, 255, 0.12);
+            --axis-line: rgba(255, 255, 255, 0.85);
+            --font-main: 'Noto Sans TC', sans-serif;
+            --font-chalk: 'Patrick Hand', 'Chakra Petch', cursive, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: #0d1117;
+            background-image: 
+                radial-gradient(circle at 50% 30%, rgba(255, 119, 0, 0.05) 0%, transparent 60%),
+                radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 40%);
+            color: var(--text-chalk);
+            font-family: var(--font-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        h1 {
+            font-family: var(--font-chalk);
+            font-size: 2.6rem;
+            color: var(--orange-accent);
+            text-shadow: 0 0 12px var(--orange-glow), 2px 2px 4px rgba(0,0,0,0.8);
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .subtitle {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .game-container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--bg-board);
+            border: 4px solid var(--board-border);
+            border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 0 80px rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+            position: relative;
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Dashboard & Status */
+        .status-bar {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 12px 20px;
+        }
+
+        .stat-card {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-family: var(--font-chalk);
+            font-size: 2rem;
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 0 8px rgba(255,255,255,0.3);
+        }
+
+        .stat-value.highlight {
+            color: var(--orange-accent);
+            text-shadow: 0 0 10px var(--orange-glow);
+        }
+
+        .stat-value.timer-warning {
+            color: var(--red-miss);
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
+        }
+
+        /* Board Area */
+        .board-wrapper {
+            position: relative;
+            aspect-ratio: 1;
+            width: 100%;
+            max-width: 520px;
+            margin: 0 auto;
+            background: #111417;
+            border-radius: 8px;
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            overflow: hidden;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: crosshair;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            justify-content: flex-start;
+        }
+
+        .input-group {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .input-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--orange-accent);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .coord-inputs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .coord-input {
+            width: 65px;
+            height: 45px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #ffffff;
+            font-family: var(--font-chalk);
+            font-size: 1.4rem;
+            text-align: center;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .coord-input:focus {
+            border-color: var(--orange-accent);
+            box-shadow: 0 0 10px var(--orange-glow);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, var(--orange-accent), #e65c00);
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-family: var(--font-main);
+            font-size: 1.05rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 119, 0, 0.3);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 119, 0, 0.5);
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn-restart {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-chalk);
+            box-shadow: none;
+        }
+
+        .btn-restart:hover {
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
+        }
+
+        .log-box {
+            flex-grow: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 12px;
+            max-height: 220px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .log-item {
+            font-size: 0.9rem;
+            padding: 6px 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.02);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .log-item.hit {
+            border-left: 4px solid var(--green-hit);
+            color: #e0f2fe;
+        }
+
+        .log-item.miss {
+            border-left: 4px solid var(--red-miss);
+            color: #fee2e2;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Overlay / Modal */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 13, 16, 0.88);
+            backdrop-filter: blur(6px);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-title {
+            font-family: var(--font-chalk);
+            font-size: 3rem;
+            color: var(--orange-accent);
+            margin-bottom: 10px;
+            text-shadow: 0 0 15px var(--orange-glow);
+        }
+
+        .modal-score {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .modal-score span {
+            font-size: 2.8rem;
+            font-family: var(--font-chalk);
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        .instructions {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🎯 座標獵人</h1>
+        <p class="subtitle">11 × 11 直角座標平面點擊與練習點位對抗賽</p>
+    </header>
+
+    <div class="game-container">
+        <!-- Status Header -->
+        <div class="status-bar">
+            <div class="stat-card">
+                <div class="stat-label">剩餘時間</div>
+                <div class="stat-value highlight" id="timer">60s</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">目前得分</div>
+                <div class="stat-value" id="score">0 / 10</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">已嘗試次數</div>
+                <div class="stat-value" id="attempts">0</div>
+            </div>
+        </div>
+
+        <!-- Canvas Coordinate Plane -->
+        <div class="board-wrapper">
+            <canvas id="coordCanvas" width="500" height="500"></canvas>
+            
+            <div class="overlay" id="endOverlay">
+                <h2 class="modal-title" id="endTitle">遊戲結束！</h2>
+                <div class="modal-score">最終得分：<span id="finalScore">0</span> / 10</div>
+                <button class="btn" onclick="restartGame()">🔄 重新開始遊戲</button>
+            </div>
+        </div>
+
+        <!-- Right Side Panel -->
+        <div class="control-panel">
+            <div class="input-group">
+                <div class="input-title">⌨️ 輸入猜測座標</div>
+                <div class="coord-inputs">
+                    <span>(</span>
+                    <input type="number" id="inputX" class="coord-input" min="-5" max="5" placeholder="X" step="1">
+                    <span>,</span>
+                    <input type="number" id="inputY" class="coord-input" min="-5" max="5" placeholder="Y" step="1">
+                    <span>)</span>
+                </div>
+                <button class="btn" id="btnSubmit">送出猜測 (Enter)</button>
+            </div>
+
+            <button class="btn btn-restart" onclick="restartGame()">🔄 重置 / 重新開始</button>
+
+            <div class="input-title">📜 猜測紀錄</div>
+            <div class="log-box" id="logBox">
+                <div class="instructions">點擊棋盤上的格點或於左方輸入 (X, Y) 即可進行猜測！</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MIN = -5;
+        const MAX = 5;
+        const GRID_COUNT = MAX - MIN; // 10 spaces between -5 and 5
+
+        let targets = [];
+        let guessedHits = new Set();
+        let guessedMisses = new Set();
+        let score = 0;
+        let timeLeft = 60;
+        let timerInterval = null;
+        let gameActive = false;
+
+        const canvas = document.getElementById('coordCanvas');
+        const ctx = canvas.getContext('2d');
+        const timerEl = document.getElementById('timer');
+        const scoreEl = document.getElementById('score');
+        const attemptsEl = document.getElementById('attempts');
+        const inputX = document.getElementById('inputX');
+        const inputY = document.getElementById('inputY');
+        const btnSubmit = document.getElementById('btnSubmit');
+        const logBox = document.getElementById('logBox');
+        const endOverlay = document.getElementById('endOverlay');
+        const endTitle = document.getElementById('endTitle');
+        const finalScore = document.getElementById('finalScore');
+
+        // Web Audio API for feedback sounds
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function playSound(type) {
+            try {
+                if (!audioCtx) audioCtx = new AudioCtx();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'hit') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                    osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.15); // A5
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.2);
+                } else if (type === 'miss') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.2);
+                } else if (type === 'win') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.4);
+                }
+            } catch(e) {}
+        }
+
+        function initGame() {
+            targets = [];
+            guessedHits.clear();
+            guessedMisses.clear();
+            score = 0;
+            timeLeft = 60;
+            gameActive = true;
+
+            // Generate 10 unique targets
+            const pool = [];
+            for (let x = MIN; x <= MAX; x++) {
+                for (let y = MIN; y <= MAX; y++) {
+                    pool.push(`${x},${y}`);
+                }
+            }
+            
+            // Shuffle
+            for (let i = pool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [pool[i], pool[j]] = [pool[j], pool[i]];
+            }
+            targets = pool.slice(0, 10);
+
+            // UI updates
+            scoreEl.textContent = `0 / 10`;
+            attemptsEl.textContent = `0`;
+            timerEl.textContent = `60s`;
+            timerEl.classList.remove('timer-warning');
+            logBox.innerHTML = '';
+            endOverlay.classList.remove('active');
+
+            clearInterval(timerInterval);
+            timerInterval = setInterval(tickTimer, 1000);
+
+            drawBoard();
+        }
+
+        function tickTimer() {
+            if (!gameActive) return;
+            timeLeft--;
+            timerEl.textContent = `${timeLeft}s`;
+
+            if (timeLeft <= 10) {
+                timerEl.classList.add('timer-warning');
+            }
+
+            if (timeLeft <= 0) {
+                endGame(false);
+            }
+        }
+
+        function endGame(cleared = false) {
+            gameActive = false;
+            clearInterval(timerInterval);
+            finalScore.textContent = score;
+            endTitle.textContent = cleared ? "🎉 完美獵殺 (滿分)！" : "⏱️ 時間到！遊戲結束";
+            endOverlay.classList.add('active');
+            if (cleared) playSound('win');
+            drawBoard(); // Show remaining targets if any
+        }
+
+        function restartGame() {
+            initGame();
+        }
+
+        // Coordinate transforms: Grid (-5 to 5) <-> Canvas Pixels (0 to width)
+        const PADDING = 40;
+        function gridToPixel(gx, gy) {
+            const w = canvas.width - PADDING * 2;
+            const h = canvas.height - PADDING * 2;
+            const px = PADDING + ((gx - MIN) / GRID_COUNT) * w;
+            const py = canvas.height - (PADDING + ((gy - MIN) / GRID_COUNT) * h);
+            return { x: px, y: py };
+        }
+
+        function pixelToGrid(px, py) {
+            const w = canvas.width - PADDING * 2;
+            const h = canvas.height - PADDING * 2;
+            const gx = Math.round(MIN + ((px - PADDING) / w) * GRID_COUNT);
+            const gy = Math.round(MIN + ((canvas.height - py - PADDING) / h) * GRID_COUNT);
+            return { x: gx, y: gy };
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Background grid pattern
+            const w = canvas.width - PADDING * 2;
+            const h = canvas.height - PADDING * 2;
+
+            // Draw grid lines
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+            ctx.lineWidth = 1;
+
+            for (let i = MIN; i <= MAX; i++) {
+                // Vertical lines
+                const p1 = gridToPixel(i, MIN);
+                const p2 = gridToPixel(i, MAX);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+
+                // Horizontal lines
+                const p3 = gridToPixel(MIN, i);
+                const p4 = gridToPixel(MAX, i);
+                ctx.beginPath();
+                ctx.moveTo(p3.x, p3.y);
+                ctx.lineTo(p4.x, p4.y);
+                ctx.stroke();
+            }
+
+            // Draw Axes
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.lineWidth = 2.5;
+
+            // X axis
+            const xMinPixel = gridToPixel(MIN, 0);
+            const xMaxPixel = gridToPixel(MAX, 0);
+            ctx.beginPath();
+            ctx.moveTo(xMinPixel.x - 15, xMinPixel.y);
+            ctx.lineTo(xMaxPixel.x + 15, xMaxPixel.y);
+            ctx.stroke();
+
+            // Y axis
+            const yMinPixel = gridToPixel(0, MIN);
+            const yMaxPixel = gridToPixel(0, MAX);
+            ctx.beginPath();
+            ctx.moveTo(yMinPixel.x, yMinPixel.y + 15);
+            ctx.lineTo(yMaxPixel.x, yMaxPixel.y - 15);
+            ctx.stroke();
+
+            // Labels & Ticks
+            ctx.fillStyle = '#8a99a6';
+            ctx.font = '13px "Patrick Hand", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            for (let i = MIN; i <= MAX; i++) {
+                if (i === 0) continue;
+                // X Ticks
+                const pX = gridToPixel(i, 0);
+                ctx.fillText(i, pX.x, pX.y + 16);
+                
+                // Y Ticks
+                const pY = gridToPixel(0, i);
+                ctx.fillText(i, pY.x - 16, pY.y);
+            }
+            // Origin 0
+            const p0 = gridToPixel(0, 0);
+            ctx.fillText('0', p0.x - 12, p0.y + 14);
+            ctx.fillText('X', xMaxPixel.x + 22, xMaxPixel.y);
+            ctx.fillText('Y', yMaxPixel.x, yMaxPixel.y - 22);
+
+            // Draw Hits
+            guessedHits.forEach(coord => {
+                const [gx, gy] = coord.split(',').map(Number);
+                const p = gridToPixel(gx, gy);
+                
+                ctx.fillStyle = '#00e676';
+                ctx.shadowColor = 'rgba(0, 230, 118, 0.6)';
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.shadowBlur = 0; // Reset
+            });
+
+            // Draw Misses
+            guessedMisses.forEach(coord => {
+                const [gx, gy] = coord.split(',').map(Number);
+                const p = gridToPixel(gx, gy);
+
+                ctx.strokeStyle = '#ff5252';
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(p.x - 6, p.y - 6);
+                ctx.lineTo(p.x + 6, p.y + 6);
+                ctx.moveTo(p.x + 6, p.y - 6);
+                ctx.lineTo(p.x - 6, p.y + 6);
+                ctx.stroke();
+            });
+
+            // If game over, reveal remaining un-guessed targets in subtle orange
+            if (!gameActive) {
+                targets.forEach(coord => {
+                    if (!guessedHits.has(coord)) {
+                        const [gx, gy] = coord.split(',').map(Number);
+                        const p = gridToPixel(gx, gy);
+
+                        ctx.strokeStyle = 'rgba(255, 119, 0, 0.8)';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(p.x, p.y, 10, 0, Math.PI * 2);
+                        ctx.stroke();
+                    }
+                });
+            }
+        }
+
+        function submitGuess(gx, gy) {
+            if (!gameActive) return;
+            if (isNaN(gx) || isNaN(gy) || gx < MIN || gx > MAX || gy < MIN || gy > MAX) {
+                alert(`請輸入 -5 到 5 之間的整數座標！`);
+                return;
+            }
+
+            const coord = `${gx},${gy}`;
+            if (guessedHits.has(coord) || guessedMisses.has(coord)) {
+                alert(`座標 (${gx}, ${gy}) 已經猜過了！`);
+                return;
+            }
+
+            const isHit = targets.includes(coord);
+            const logItem = document.createElement('div');
+            logItem.className = `log-item ${isHit ? 'hit' : 'miss'}`;
+
+            if (isHit) {
+                guessedHits.add(coord);
+                score++;
+                scoreEl.textContent = `${score} / 10`;
+                logItem.innerHTML = `<span>🎯 猜測 <strong>(${gx}, ${gy})</strong></span> <span>命中！+1</span>`;
+                playSound('hit');
+            } else {
+                guessedMisses.add(coord);
+                logItem.innerHTML = `<span>❌ 猜測 <strong>(${gx}, ${gy})</strong></span> <span>未命中</span>`;
+                playSound('miss');
+            }
+
+            attemptsEl.textContent = guessedHits.size + guessedMisses.size;
+            logBox.prepend(logItem);
+
+            drawBoard();
+
+            if (score >= 10) {
+                endGame(true);
+            }
+        }
+
+        // Click canvas to guess
+        canvas.addEventListener('click', (e) => {
+            if (!gameActive) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const px = (e.clientX - rect.left) * scaleX;
+            const py = (e.clientY - rect.top) * scaleY;
+
+            const grid = pixelToGrid(px, py);
+            if (grid.x >= MIN && grid.x <= MAX && grid.y >= MIN && grid.y <= MAX) {
+                inputX.value = grid.x;
+                inputY.value = grid.y;
+                submitGuess(grid.x, grid.y);
+            }
+        });
+
+        btnSubmit.addEventListener('click', () => {
+            const gx = parseInt(inputX.value, 10);
+            const gy = parseInt(inputY.value, 10);
+            submitGuess(gx, gy);
+        });
+
+        [inputX, inputY].forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    btnSubmit.click();
+                }
+            });
+        });
+
+        // Initialize on load
+        initGame();
+    </script>
+</body>
+</html>
