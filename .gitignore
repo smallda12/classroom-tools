@@ -14,3 +14,30 @@ credentials.*
 # Node.js
 node_modules/
 package-lock.json
+
+# >>> project-initialize managed rules >>>
+# System and editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Dependencies, caches and build output
+node_modules/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+dist/
+build/
+coverage/
+*.log
+# <<< project-initialize managed rules <<<

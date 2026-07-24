@@ -32,6 +32,7 @@
 
 ## 3. 當前各 Agent 工作進度狀態 (Cross-Agent Status Checklist)
 
-- [x] **初始化**（Claude Code，2026-07-24）：建立總專案骨架（`CLAUDE.md`／`.gitignore`／`README.md`）、GitHub 公開 repo（[smallda12/classroom-tools](https://github.com/smallda12/classroom-tools)）、Obsidian 工作筆記、收工/開工 skill 的專案內同步邏輯。尚未建立任何 `tools/` 子工具。
+- [x] **初始化**（Claude Code，2026-07-24）：建立總專案骨架（`CLAUDE.md`／`.gitignore`／`README.md`）、GitHub 公開 repo（[smallda12/classroom-tools](https://github.com/smallda12/classroom-tools)）、Obsidian 工作筆記、收工/開工 skill 與 SessionEnd 安全網。
+- [ ] **座標獵人**（待使用者依 EP10 句型開發）：已建立 `tools/coordinate-hunter/` 子資料夾，尚未開始製作。
 
 （之後每個新工具開工/收工時，在這裡加一行：工具名稱 + 負責 Agent + 目前狀態）
